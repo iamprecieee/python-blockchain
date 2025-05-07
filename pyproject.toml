@@ -1,0 +1,39 @@
+[project]
+name = "python-blockchain"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "black>=25.1.0",
+    "fastapi[all]>=0.115.12",
+    "isort>=6.0.1",
+    "mypy>=1.15.0",
+    "ruff>=0.11.8",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.ruff]
+line-length = 88
+lint.select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "B",     # flake8-bugbear
+    "I",     # isort
+    "C4",    # flake8-comprehensions
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "T20",   # flake8-print
+]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true

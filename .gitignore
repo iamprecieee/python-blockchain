@@ -1,0 +1,16 @@
+__pycache__/
+build/
+dist/
+wheels/
+*.egg*
+env
+*cache
+
+.venv
+venv
+.env
+
+*.swp
+*.swo
+.idea
+.vscode
