@@ -21,7 +21,7 @@ class Block(BaseModel):
 
     def _calculate_block_hash(self) -> str:
         """Calculate the hash value for a mined block."""
-        block_data_str = self.model_dump_json(exclude={"_hash"})
+        block_data_str = self.model_dump_json(exclude={"current_hash"})
         return hashlib.sha256(block_data_str.encode()).hexdigest()
 
     @property

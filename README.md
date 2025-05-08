@@ -10,6 +10,13 @@ This project implements a blockchain from scratch in Python with a focus on lear
     - Supports configurable mining difficulty and block validation 
     - Includes automatic hash calculation and nonce management
 
+- `Transaction`: Represents value transfers with cryptographic validation
+    - Implements status tracking (PENDING, CONFIRMED, FAILED)
+    - Enforces address validation (0x format)
+    - Provides unique transaction IDs with SHA-256 hashing
+    - Supports optional transaction messages
+    - Links to containing block once mined
+
 ## Technical Details
 
 - Built with Python 3.13+
@@ -19,25 +26,28 @@ This project implements a blockchain from scratch in Python with a focus on lear
 
 ## Code Example
 
-- The `Block` implementation includes features like:
-    ```python
-    # Create a new block
-    block = Block(
-        index=1,
-        transactions=deque([{
-            "sender": "0x123",
-            "recipient": "0x456",
-            "amount": 5.0
-        }]),
-        previous_hash="0x" + "0"*64
-    )
+```python
+# Create a new transaction
+transaction = Transaction(
+    sender="0x8a35acfbc15ff81a39ae7d344fd709f28e8600b4",
+    recipient="0x71c7656ec7ab88b098defb751b7401b5f6d8976f",
+    amount=5.0,
+    message="Payment for services"
+)
 
-    # Mine the block with difficulty level 2
-    block.mine(difficulty=2)
+# Create a new block
+block = Block(
+    index=1,
+    transactions=deque([transaction]),
+    previous_hash="0x" + "0"*64
+)
 
-    # Verify block validity
-    is_valid = block.is_valid()
-    ```
+# Mine the block with difficulty level 2
+block.mine(difficulty=2)
+
+# Verify block validity
+is_valid = block.is_valid()
+```
 
 ## Project Structure
 
