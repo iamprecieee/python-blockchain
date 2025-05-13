@@ -17,12 +17,27 @@ This project implements a blockchain from scratch in Python with a focus on lear
     - Supports optional transaction messages
     - Links to containing block once mined
 
+- `Blockchain`: Manages the chain of blocks and transaction processing
+    - Maintains a dynamic transaction pool
+    - Validates transactions and blocks
+    - Tracks account nonces to prevent replay attacks
+    - Handles mining operations with automatic rewards
+    - Ensures chain integrity with multi-level validation
+
 ## Technical Details
 
 - Built with Python 3.13+
 - Uses FastAPI for RESTful interface
 - Implements proof-of-work consensus mechanism
 - Employs SHA-256 for cryptographic security
+
+## Architecture Highlights
+
+- _Model Integration_: Block and Transaction models are integrated using forward references and model rebuilding
+- _Circular Dependency Resolution_: Uses Python's TYPE_CHECKING alongside Pydantic's `model_rebuild()` to avoid runtime circular imports
+- _Deep Copy Transactions_: Ensures data integrity with proper transaction copying during mining
+- _Transaction Lifecycle_: Transactions reference their containing block once mined
+- _Chain Validation_: Validates both individual blocks and relationships between blocks
 
 ## Code Example
 
@@ -35,18 +50,17 @@ transaction = Transaction(
     message="Payment for services"
 )
 
-# Create a new block
-block = Block(
-    index=1,
-    transactions=deque([transaction]),
-    previous_hash="0x" + "0"*64
-)
+# Set mining difficulty and add transaction to blockchain
+blockchain = Blockchain(difficulty=2)
+blockchain.add_transaction(transaction)
 
-# Mine the block with difficulty level 2
-block.mine(difficulty=2)
+# Mine a new block with pending transactions
+# This automatically adds the miner reward transaction, links transactions to the block,
+# and updates transaction statuses to "confirmed"
+new_block = blockchain.mine_block(miner_address="0x8e215d1f648f5a79c9e711f8ca4c8ebd5ca948b8")
 
-# Verify block validity
-is_valid = block.is_valid()
+# Verify entire blockchain integrity
+is_valid = blockchain.validate_chain()
 ```
 
 ## Project Structure
@@ -56,6 +70,10 @@ python-blockchain/
 │
 ├── app/              
 │   ├── models/   
+│   │   ├── __init__.py     
+│   │   ├── block.py       
+│   │   ├── blockchain.py   
+│   │   └── transaction.py  
 │   ├── routers/    
 │   ├── services/ 
 │   ├── utils/ 

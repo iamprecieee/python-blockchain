@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.models import Block
+
 
 class Transaction(BaseModel):
     class TransactionStatus(StrEnum):
@@ -18,7 +20,7 @@ class Transaction(BaseModel):
     amount: float = Field(default=0, ge=0.0)
     status: str = Field(default=TransactionStatus.PENDING)
     timestamp: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
-    block: "Block" = Field(default=None)
+    block: Block | None = Field(default=None, exclude=True)
     message: str | None = Field(default=None, max_length=500)
     transaction_hash: str | None = Field(default=None, exclude=True)
 
@@ -29,7 +31,7 @@ class Transaction(BaseModel):
 
     def _calculate_transaction_hash(self) -> str:
         """Calculate the hash value for a mined transaction."""
-        block_data_str = self.model_dump_json(exclude={"transaction_hash"})
+        block_data_str = self.model_dump_json(exclude={"transaction_hash", "block"})
         return hashlib.sha256(block_data_str.encode()).hexdigest()
 
     @property
@@ -58,6 +60,3 @@ class Transaction(BaseModel):
         """Update the status of a transaction."""
         if status in self.TransactionStatus.__members__.values():
             self.status = status
-
-
-from app.models.block import Block

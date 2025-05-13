@@ -1,15 +1,20 @@
+from __future__ import annotations
+
 import hashlib
 from collections import deque
 from datetime import datetime
-from typing import Any, Deque
+from typing import TYPE_CHECKING, Any, Deque
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from app.models import Transaction
 
 
 class Block(BaseModel):
     index: int = Field(default=0)
     timestamp: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
-    transactions: Deque = Field(default_factory=lambda: deque([]))
+    transactions: Deque[Transaction] = Field(default_factory=lambda: deque([]))
     previous_hash: str | None = Field(default=None)
     nonce: int = Field(default=0)
     current_hash: str | None = Field(default=None, exclude=True)
