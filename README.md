@@ -16,6 +16,8 @@ This project implements a blockchain from scratch in Python with a focus on lear
     - Provides unique transaction IDs with SHA-256 hashing
     - Supports optional transaction messages
     - Links to containing block once mined
+    - Includes nonce management for replay attack prevention
+    - Supports transaction status updates during lifecycle
 
 - `Blockchain`: Manages the chain of blocks and transaction processing
     - Maintains a dynamic transaction pool
@@ -23,6 +25,23 @@ This project implements a blockchain from scratch in Python with a focus on lear
     - Tracks account nonces to prevent replay attacks
     - Handles mining operations with automatic rewards
     - Ensures chain integrity with multi-level validation
+    - Provides balance calculation for blockchain addresses
+
+## API Endpoints
+
+The blockchain exposes a RESTful API with the following endpoints:
+
+### Block Operations
+
+- `GET /blocks`: Retrieve the entire blockchain
+- `GET /blocks/{index}`: Get a specific block by index
+- `POST /blocks/mine`: Mine a new block with pending transactions
+
+### Transaction Operations
+
+- `GET /transactions`: Get all pending transactions
+- `POST /transactions`: Create a new transaction
+- `GET /transactions/balance/{address}`: Get the balance for an address
 
 ## Technical Details
 
@@ -30,6 +49,8 @@ This project implements a blockchain from scratch in Python with a focus on lear
 - Uses FastAPI for RESTful interface
 - Implements proof-of-work consensus mechanism
 - Employs SHA-256 for cryptographic security
+- Standardized API response format
+- Global exception handling for robust error responses
 
 ## Architecture Highlights
 
@@ -38,6 +59,9 @@ This project implements a blockchain from scratch in Python with a focus on lear
 - _Deep Copy Transactions_: Ensures data integrity with proper transaction copying during mining
 - _Transaction Lifecycle_: Transactions reference their containing block once mined
 - _Chain Validation_: Validates both individual blocks and relationships between blocks
+- _API Response Pattern_: Consistent response format with status, message, and data fields
+- _Service Layer_: Uses singleton pattern for blockchain instance
+- _Exception Handling_: Global exception handlers for standardized error responses
 
 ## Code Example
 
@@ -75,8 +99,20 @@ python-blockchain/
 │   │   ├── blockchain.py   
 │   │   └── transaction.py  
 │   ├── routers/    
+│   │   ├── __init__.py
+│   │   ├── blocks.py
+│   │   └── transactions.py  
+│   ├── schemas/    
+│   │   ├── __init__.py
+│   │   ├── block.py
+│   │   └── transaction.py
 │   ├── services/ 
+│   │   ├── __init__.py
+│   │   └── blockchain_service.py
 │   ├── utils/ 
+│   │   ├── __init__.py
+│   │   ├── exceptions.py
+│   │   └── responses.py
 │   └── main.py   
 │
 ├── tests/     

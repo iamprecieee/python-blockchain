@@ -23,7 +23,9 @@ class Blockchain:
             message="Genesis Block - First block onchain.",
         )
         genesis_block = Block(
-            index=0, transactions=deque([genesis_transaction]), previous_hash="0" * 64
+            index=0,
+            transactions=deque([genesis_transaction]),
+            previous_hash="0x" + ("0" * 64),
         )
         genesis_transaction.block = genesis_block
         genesis_block.mine(difficulty=self.difficulty)
@@ -88,6 +90,7 @@ class Blockchain:
             transaction.nonce = current_transaction_nonce + 1
         is_valid_transaction = self._validate_transaction(transaction.model_dump())
         if is_valid_transaction:
+            transaction.hash_nonce()
             self.pending_transactions.append(transaction)
             if transaction.sender != "0":
                 self.account_nonces[transaction.sender] = transaction.nonce
@@ -121,3 +124,14 @@ class Blockchain:
             if not self._validate_block(current_block, previous_block=previous_block):
                 return False
         return True
+
+    def get_balance(self, address: str) -> float:
+        """Calculate the current balance for an address by analyzing the blockchain."""
+        balance = 0.0
+        for block in self.chain:
+            for transaction in block.transactions:
+                if transaction.recipient == address:
+                    balance += transaction.amount
+                if transaction.sender == address and transaction.sender != "0":
+                    balance -= transaction.amount
+        return balance

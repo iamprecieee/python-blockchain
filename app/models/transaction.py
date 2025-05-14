@@ -22,26 +22,19 @@ class Transaction(BaseModel):
     timestamp: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
     block: Block | None = Field(default=None, exclude=True)
     message: str | None = Field(default=None, max_length=500)
-    transaction_hash: str | None = Field(default=None, exclude=True)
+    transaction_id: str = "dummy"
 
     def model_post_init(self, context: Any) -> None:
-        if self.transaction_hash is None:
-            self.transaction_hash = self._calculate_transaction_hash()
+        if self.transaction_id == "dummy":
+            self.transaction_id = self._calculate_transaction_hash()
         return super().model_post_init(context)
 
     def _calculate_transaction_hash(self) -> str:
         """Calculate the hash value for a mined transaction."""
-        block_data_str = self.model_dump_json(exclude={"transaction_hash", "block"})
-        return hashlib.sha256(block_data_str.encode()).hexdigest()
-
-    @property
-    def transaction_id(self):
-        """Get the current hash value of a transaction."""
-        return (
-            "0x" + self.transaction_hash
-            if self.transaction_hash
-            else self.transaction_hash
+        block_data_str = self.model_dump_json(
+            exclude={"transaction_id", "block", "status"}
         )
+        return "0x" + hashlib.sha256(block_data_str.encode()).hexdigest()
 
     @field_validator("sender", "recipient")
     def validate_address(cls, address: str) -> str:
@@ -60,3 +53,7 @@ class Transaction(BaseModel):
         """Update the status of a transaction."""
         if status in self.TransactionStatus.__members__.values():
             self.status = status
+
+    def hash_nonce(self):
+        """Recalculate transaction hash when valid nonce value is set"""
+        self.transaction_id = self._calculate_transaction_hash()
