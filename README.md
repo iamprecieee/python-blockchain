@@ -51,6 +51,7 @@ The blockchain exposes a RESTful API with the following endpoints:
 - Employs SHA-256 for cryptographic security
 - Standardized API response format
 - Global exception handling for robust error responses
+- Comprehensive test suite with pytest
 
 ## Architecture Highlights
 
@@ -62,6 +63,7 @@ The blockchain exposes a RESTful API with the following endpoints:
 - _API Response Pattern_: Consistent response format with status, message, and data fields
 - _Service Layer_: Uses singleton pattern for blockchain instance
 - _Exception Handling_: Global exception handlers for standardized error responses
+- _Test Coverage_: Extensive test suite ensures code quality and correctness
 
 ## Code Example
 
@@ -92,7 +94,8 @@ is_valid = blockchain.validate_chain()
 ```shell
 python-blockchain/
 │
-├── app/              
+├── app/  
+│   ├── __init__.py            
 │   ├── models/   
 │   │   ├── __init__.py     
 │   │   ├── block.py       
@@ -116,6 +119,19 @@ python-blockchain/
 │   └── main.py   
 │
 ├── tests/     
+│   ├── __init__.py
+│   ├── conftest.py        # Test fixtures and utilities
+│   ├── models/ 
+│   │   ├── __init__.py           # Core model unit tests
+│   │   ├── test_block.py
+│   │   ├── test_transaction.py
+│   │   └── test_blockchain.py
+│   └── api/ 
+│       ├── __init__.py              # API endpoint tests
+│       ├── test_block.py
+│       ├── test_transaction.py
+│       └── test_exception_handling.py
+│ 
 ├── .gitignore      
 ├── .python-version        
 ├── pyproject.toml     
@@ -187,6 +203,27 @@ This project uses the following tools for development:
 - `isort` for import sorting
 - `mypy` for static type checking
 - `ruff` for linting
+
+## Testing
+
+This project includes a comprehensive test suite built with pytest:
+
+- _Unit Tests_: Tests for Block, Transaction, and Blockchain classes
+- _API Tests_: Tests for all API endpoints and error handling
+_Test Fixtures_: Centralized test fixtures and utilities in conftest.py
+
+To run the tests:
+
+```shell
+# Run all tests
+pytest
+
+# Run with coverage report
+pytest --cov=app
+
+# Run specific test modules
+pytest tests/models/test_block.py
+```
 
 ## Contributing
 Contributions are welcome! Please feel free to submit a Pull Request.

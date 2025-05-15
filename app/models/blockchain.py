@@ -22,11 +22,7 @@ class Blockchain:
             amount=0,
             message="Genesis Block - First block onchain.",
         )
-        genesis_block = Block(
-            index=0,
-            transactions=deque([genesis_transaction]),
-            previous_hash="0x" + ("0" * 64),
-        )
+        genesis_block = Block(index=0, transactions=deque([genesis_transaction]))
         genesis_transaction.block = genesis_block
         genesis_block.mine(difficulty=self.difficulty)
         self.chain.append(genesis_block)
