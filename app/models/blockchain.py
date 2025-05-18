@@ -1,8 +1,9 @@
 import copy
 from collections import deque
-from typing import Deque
+from typing import TYPE_CHECKING, Deque, Optional
 
-from app.models import *
+if TYPE_CHECKING:
+    from app.models import *
 
 
 class Blockchain:
@@ -10,106 +11,89 @@ class Blockchain:
         self.chain: Deque[Block] = deque([])
         self.chain_length = 0
         self.account_nonces: dict[str, int] = {}
-        self.pending_transactions: Deque[Transaction] = deque([])
+        self.pending_transactions: Deque["Transaction"] = deque([])
+        self.future_transactions: dict[str, dict[int, Transaction]] = {}
+        self.transactions_by_hash: dict[str, "Transaction"] = {}
         self.difficulty = difficulty
         self._create_genesis_block()
 
     def _create_genesis_block(self) -> None:
         """Create the first block in the chain."""
+        from app.models import Block, Transaction
+
         genesis_transaction = Transaction(
-            sender="0",
-            recipient="0",
+            sender="0x",
+            recipient="0x",
             amount=0,
             message="Genesis Block - First block onchain.",
         )
-        genesis_block = Block(index=0, transactions=deque([genesis_transaction]))
-        genesis_transaction.block = genesis_block
+        self.transactions_by_hash[genesis_transaction.transaction_hash] = genesis_transaction
+        genesis_block = Block(
+            index=0, transaction_hashes=deque([genesis_transaction.transaction_hash])
+        )
+        genesis_transaction.block_index = 0
         genesis_block.mine(difficulty=self.difficulty)
         self.chain.append(genesis_block)
         self.chain_length += 1
 
-    def _validate_transaction(self, transaction: dict) -> bool:
-        """Validate that the transaction has the required fields and valid values."""
-        if not all(
-            [field in transaction for field in {"sender", "recipient", "amount"}]
-        ):
+    def _process_future_transactions(self, sender: str) -> None:
+        """Process any queued future transactions that are now valid."""
+        if sender not in self.future_transactions:
+            return
+        expected_nonce = self.account_nonces.get(sender, 0) + 1
+        while expected_nonce in self.future_transactions[sender]:
+            transaction = self.future_transactions[sender].pop(expected_nonce)
+            self.pending_transactions.append(transaction)
+            self.account_nonces[sender] = expected_nonce
+            expected_nonce += 1
+        if not self.future_transactions[sender]:
+            del self.future_transactions[sender]
+
+    def mine_block(self, miner_address: str) -> Optional["Block"]:
+        """Mine a new block with pending transactions."""
+        from app.models import Block, Transaction
+
+        if not self.pending_transactions:
+            return None
+        reward_transaction = Transaction(sender="0x", recipient=miner_address, amount=1.0)
+        reward_transaction.add_to_blockchain(self)
+        transaction_hashes = deque(
+            [transaction.transaction_hash for transaction in self.pending_transactions]
+        )
+        pending_transactions_copy = copy.copy(self.pending_transactions)
+        self.pending_transactions.clear()
+        new_block = Block(
+            index=self.chain_length,
+            transaction_hashes=transaction_hashes,
+            previous_hash=self.chain[-1].hash,
+        )
+        new_block.mine(difficulty=self.difficulty)
+        if self._add_block(new_block):
+            for transaction in pending_transactions_copy:
+                transaction.block_index = new_block.index
+                transaction.update_status("confirmed")
+            return new_block
+        return None
+
+    def _add_block(self, block: "Block") -> bool:
+        """Add a new block to the chain if valid."""
+        if not self._validate_block(block):
             return False
-        if (
-            not isinstance(transaction["amount"], (int, float))
-            or transaction["amount"] <= 0.0
-        ):
-            return False
-        if transaction["status"] != Transaction.TransactionStatus.PENDING:
-            return False
-        if transaction["sender"] == "0":
-            if transaction["nonce"] != 0:
-                return False
-        else:
-            expected_nonce = self.account_nonces.get(transaction["sender"], 0) + 1
-            if transaction["nonce"] != expected_nonce:
-                return False
+        self.chain.append(block)
+        self.chain_length += 1
         return True
 
-    def _collect_pending_transactions(self) -> Deque:
-        """Clear and return a copy of pending transactions."""
-        pending_copy = copy.deepcopy(self.pending_transactions)
-        self.pending_transactions.clear()
-        return pending_copy
-
-    def _validate_block(
-        self, block: Block, previous_block: Block | None = None
-    ) -> bool:
-        """Validate a block's internal consistency and link to previous block"""
+    def _validate_block(self, block: "Block", previous_block: Optional["Block"] = None) -> bool:
+        """Validate a block's internal consistency and link to previous block."""
         if not block.is_valid():
             return False
         if previous_block:
-            if block.previous_hash != previous_block.hash or block.index != (
-                previous_block.index + 1
+            if (
+                block.previous_hash != previous_block.hash
+                or block.index != previous_block.index + 1
             ):
                 return False
         return True
-
-    def _add_block(self, block: Block) -> Block | None:
-        """Add a new block to the chain."""
-        if not self._validate_block(block):
-            return None
-        self.chain.append(block)
-        self.chain_length += 1
-        return block
-
-    def add_transaction(self, transaction: Transaction) -> bool:
-        """Add a transaction to the pending pool if valid."""
-        if transaction.sender == "0":
-            transaction.nonce = 0
-        else:
-            current_transaction_nonce = self.account_nonces.get(transaction.sender, 0)
-            transaction.nonce = current_transaction_nonce + 1
-        is_valid_transaction = self._validate_transaction(transaction.model_dump())
-        if is_valid_transaction:
-            transaction.hash_nonce()
-            self.pending_transactions.append(transaction)
-            if transaction.sender != "0":
-                self.account_nonces[transaction.sender] = transaction.nonce
-        return is_valid_transaction
-
-    def mine_block(self, miner_address: str) -> Block | None:
-        """Mine a new block with pending transactions."""
-        if not self.pending_transactions:
-            return None
-        reward_transaction = Transaction(
-            sender="0", recipient=miner_address, amount=1.0
-        )
-        self.pending_transactions.append(reward_transaction)
-        new_block = Block(
-            index=self.chain_length,
-            transactions=self._collect_pending_transactions(),
-            previous_hash=self.chain[-1].hash,
-        )
-        for transaction in new_block.transactions:
-            transaction.block = new_block
-            transaction.update_status("confirmed")
-        new_block.mine(difficulty=self.difficulty)
-        return self._add_block(new_block)
 
     def validate_chain(self) -> bool:
         """Validate the entire blockchain's integrity."""
@@ -120,14 +104,3 @@ class Blockchain:
             if not self._validate_block(current_block, previous_block=previous_block):
                 return False
         return True
-
-    def get_balance(self, address: str) -> float:
-        """Calculate the current balance for an address by analyzing the blockchain."""
-        balance = 0.0
-        for block in self.chain:
-            for transaction in block.transactions:
-                if transaction.recipient == address:
-                    balance += transaction.amount
-                if transaction.sender == address and transaction.sender != "0":
-                    balance -= transaction.amount
-        return balance

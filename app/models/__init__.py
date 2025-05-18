@@ -1,9 +1,15 @@
 from app.models.block import Block
+from app.models.blockchain import Blockchain
+from app.models.signature import TransactionSignature
 from app.models.transaction import Transaction
+from app.models.wallet import Wallet
 
-Block.model_rebuild()
 Transaction.model_rebuild()
 
-from app.models.blockchain import Blockchain
-
-__all__ = ["Block", "Transaction", "Blockchain"]
+__all__ = [
+    "Block",
+    "Transaction",
+    "Wallet",
+    "TransactionSignature",
+    "Blockchain",
+]
