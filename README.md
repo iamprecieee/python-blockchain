@@ -92,17 +92,31 @@ transaction = Transaction(
     message="Payment for services"
 )
 
-# Set mining difficulty and add transaction to blockchain
+# Create a blockchain with custom mining difficulty
 blockchain = Blockchain(difficulty=2)
-blockchain.add_transaction(transaction)
+
+# Create necessary wallets
+sender_wallet = Wallet(password="test_password")
+recipient_wallet = Wallet(password="test_password2")
+miner_wallet = Wallet(password="test_password3")
+
+# Create and sign new transaction, then add it to the chain
+transaction = Transaction(
+    sender=sender_wallet.address,
+    recipient=recipient_wallet.address,
+    amount=5.0
+)
+transaction.set_nonce_hashed(blockchain=blockchain, wallet=sender_wallet)
+transaction.sign(wallet=sender_wallet, password="test_password")
+transaction.add_to_blockchain(blockchain=blockchain, wallet=sender_wallet)
 
 # Mine a new block with pending transactions
 # This automatically adds the miner reward transaction, links transactions to the block,
 # and updates transaction statuses to "confirmed"
-new_block = blockchain.mine_block(miner_address="0x8e215d1f648f5a79c9e711f8ca4c8ebd5ca948b8")
+blockchain.mine_block(miner_address=sender_wallet.address)
 
 # Verify entire blockchain integrity
-is_valid = blockchain.validate_chain()
+assert blockchain.validate_chain()
 ```
 
 ## Project Structure 📁
@@ -115,8 +129,10 @@ python-blockchain/
 │   ├── models/   
 │   │   ├── __init__.py     
 │   │   ├── block.py       
-│   │   ├── blockchain.py   
+│   │   ├── blockchain.py 
+│   │   └── signature.py    
 │   │   └── transaction.py  
+│   │   └── wallet.py  
 │   ├── routers/    
 │   │   ├── __init__.py
 │   │   ├── blocks.py
@@ -132,6 +148,7 @@ python-blockchain/
 │   │   ├── __init__.py
 │   │   ├── exceptions.py
 │   │   └── responses.py
+│   │   └── validators.py  
 │   └── main.py   
 │
 ├── tests/     
@@ -140,8 +157,9 @@ python-blockchain/
 │   ├── models/ 
 │   │   ├── __init__.py           # Core model unit tests
 │   │   ├── test_block.py
-│   │   ├── test_transaction.py
 │   │   └── test_blockchain.py
+│   │   ├── test_transaction.py
+│   │   └── test_wallet.py
 │   └── api/ 
 │       ├── __init__.py              # API endpoint tests
 │       ├── test_block.py

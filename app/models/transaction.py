@@ -24,7 +24,7 @@ class Transaction(BaseModel):
     block_index: int | None = Field(default=None, exclude=True)
     message: str | None = Field(default=None, max_length=500)
     transaction_hash: str = Field(default="")
-    signature_data: Optional["TransactionSignature"] = Field(default=None)
+    signature_data: Optional["TransactionSignature"] = Field(default=None, exclude=True)
 
     def model_post_init(self, context: Any) -> None:
         if self.transaction_hash == "":
@@ -61,7 +61,7 @@ class Transaction(BaseModel):
     def update_status(self, status: str) -> None:
         """Update the status of a transaction."""
         if status in self.TransactionStatus.__members__.values():
-            self.status = status
+            self.status = self.TransactionStatus(status)
 
     def set_nonce_hashed(self, blockchain: "Blockchain", wallet: "Wallet") -> None:
         """Set valid nonce and recalculate transaction hash."""
