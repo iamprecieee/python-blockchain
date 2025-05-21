@@ -31,6 +31,7 @@ jobs:
                 python3 -m pip install --upgrade pip
                 pip install uv
                 uv sync --active
+                uv pip install black isort ruff mypy
             
             - name: Run Black
               run: black --check --diff .
