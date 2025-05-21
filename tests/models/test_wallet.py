@@ -1,9 +1,7 @@
-import copy
-
 import pytest
 
 from app.models import Wallet
-from tests import *
+from tests import RECIPIENT_ADDRESS, TEST_PASSWORD
 
 
 def test_wallet_creation(wallet):
@@ -26,6 +24,7 @@ def test_create_wallet_from_private_key(wallet):
     original_wallet = wallet
     private_key = original_wallet.export_private_key(TEST_PASSWORD)
     restored_wallet = Wallet(password=TEST_PASSWORD, private_key_hex=private_key)
+
     assert all(
         [
             original_wallet.address == restored_wallet.address,
@@ -49,6 +48,7 @@ def test_export_private_key(wallet):
     """Test exporting the private key with password."""
     private_key = wallet.export_private_key(TEST_PASSWORD)
     assert all([private_key.startswith("0x"), len(private_key) == 66])
+
     with pytest.raises(ValueError):
         wallet.export_private_key("TEST_ALTERNATE_PASSWORD")
 
@@ -59,12 +59,15 @@ def test_keystore_export_restore(wallet):
     keystore = original_wallet.export_encrypted_keystore(TEST_PASSWORD)
     with pytest.raises(ValueError):
         original_wallet.export_encrypted_keystore("TEST_ALTERNATE_PASSWORD")
+
     assert all(["encrypted_key" in keystore, "verification_salt" in keystore])
+
     restored_wallet = Wallet.restore_from_keystore(keystore, TEST_PASSWORD)
     with pytest.raises(ValueError):
         Wallet.restore_from_keystore(keystore="keystore", password=TEST_PASSWORD)
     with pytest.raises(ValueError):
         Wallet.restore_from_keystore(keystore, "TEST_ALTERNATE_PASSWORD")
+
     assert all(
         [
             restored_wallet.address == original_wallet.address,
@@ -77,14 +80,18 @@ def test_address_generation_and_checksum(wallet):
     """Test that address generation and EIP-55 checksum work correctly."""
     address = wallet.address
     assert all([address.startswith("0x"), len(address) == 42])
+
     address_without_prefix = address[2:]
     assert not (address_without_prefix.islower() or address_without_prefix.isupper())
+
     rechecksummed = wallet._apply_eip55_checksum(address.lower())
     assert rechecksummed == address
 
 
 def test_transaction_signing_and_verification(wallet):
     """Test signing and verifying a transaction."""
+    import copy
+
     transaction_data = {
         "sender": wallet.address,
         "recipient": RECIPIENT_ADDRESS,
@@ -94,12 +101,17 @@ def test_transaction_signing_and_verification(wallet):
     }
     with pytest.raises(ValueError):
         wallet.sign_transaction(transaction_data, "TEST_ALTERNATE_PASSWORD")
+
     signature = wallet.sign_transaction(transaction_data, TEST_PASSWORD)
     assert all([signature is not None, isinstance(signature, bytes)])
+
     public_key_bytes = bytes.fromhex(wallet.get_public_key_hex()[2:])
     result = Wallet.verify_signature(transaction_data, signature, public_key_bytes)
+
     assert result is True
+
     modified_tx = copy.deepcopy(transaction_data)
     modified_tx["amount"] = 2.0
     result = Wallet.verify_signature(modified_tx, signature, public_key_bytes)
+
     assert result is False

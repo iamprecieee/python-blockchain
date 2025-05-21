@@ -1,9 +1,7 @@
-import copy
-
 import pytest
 
 from app.models import Blockchain, Transaction, Wallet
-from tests import *
+from tests import RECIPIENT_ADDRESS, SENDER_ADDRESS, TEST_PASSWORD
 
 
 def test_transaction_initialization():
@@ -73,8 +71,10 @@ def test_address_validation():
             transaction1.recipient == RECIPIENT_ADDRESS,
         ]
     )
+
     transaction2 = Transaction(sender="0x", recipient=RECIPIENT_ADDRESS)
     assert transaction2.sender == "0x"
+
     with pytest.raises(ValueError):
         Transaction(sender="invalid", recipient=RECIPIENT_ADDRESS)
     with pytest.raises(ValueError):
@@ -94,10 +94,13 @@ def test_transaction_status_updates():
         amount=5.0,
     )
     assert transaction.status == Transaction.TransactionStatus.PENDING
+
     transaction.update_status("confirmed")
     assert transaction.status == Transaction.TransactionStatus.CONFIRMED
+
     transaction.update_status("failed")
     assert transaction.status == Transaction.TransactionStatus.FAILED
+
     transaction.update_status("invalid_status")
     assert transaction.status == Transaction.TransactionStatus.FAILED
 
@@ -111,12 +114,16 @@ def test_transaction_hash_generation(wallet):
         amount=5.0,
     )
     initial_hash = transaction.transaction_hash
+
     assert initial_hash is not None
+
     original_nonce = transaction.nonce
     transaction.nonce = original_nonce + 1
     transaction.set_nonce_hashed(blockchain, wallet)
     new_hash = transaction.transaction_hash
+
     assert new_hash != initial_hash
+
     wallet2 = Wallet(password=TEST_PASSWORD, private_key_hex=None, encrypted_key=None)
     transaction2 = Transaction(
         sender=wallet2.address,
@@ -124,6 +131,7 @@ def test_transaction_hash_generation(wallet):
         amount=5.0,
     )
     transaction2.set_nonce_hashed(blockchain, wallet)
+
     assert transaction2.transaction_hash != initial_hash
 
 
@@ -141,12 +149,15 @@ def test_transaction_block_association():
             transaction.status == Transaction.TransactionStatus.PENDING,
         ]
     )
+
     transaction.update_status("confirmed")
     assert transaction.status == Transaction.TransactionStatus.CONFIRMED
 
 
 def test_transaction_signature(wallet):
     """Test transaction signature using composition with TransactionSignature."""
+    import copy
+
     transaction = Transaction(
         sender=wallet.address,
         recipient=RECIPIENT_ADDRESS,
@@ -157,6 +168,7 @@ def test_transaction_signature(wallet):
         transaction_copy.sender = SENDER_ADDRESS
         transaction_copy.sign(wallet, TEST_PASSWORD)
     transaction.sign(wallet, TEST_PASSWORD)
+
     assert all(
         [
             transaction.signature_data is not None,
@@ -165,6 +177,7 @@ def test_transaction_signature(wallet):
         ]
     )
     assert transaction.verify_signature()
+
     transaction.amount = 10.0
     assert not transaction.verify_signature()
 
@@ -176,6 +189,7 @@ def test_add_transaction_to_blockchain(wallet):
     transaction.set_nonce_hashed(blockchain, wallet)
     transaction.sign(wallet, TEST_PASSWORD)
     success = transaction.add_to_blockchain(blockchain, wallet)
+
     assert all(
         [
             success,
@@ -192,6 +206,7 @@ def test_add_system_transaction():
     blockchain = Blockchain(difficulty=1)
     transaction = Transaction(sender="0x", recipient=RECIPIENT_ADDRESS, amount=1.0)
     success = transaction.add_to_blockchain(blockchain)
+
     assert all([success, len(blockchain.pending_transactions) == 1, transaction.nonce == 0])
 
 
@@ -202,11 +217,14 @@ def test_add_multiple_transactions(wallet):
     transaction1.set_nonce_hashed(blockchain, wallet)
     transaction1.sign(wallet, TEST_PASSWORD)
     transaction1.add_to_blockchain(blockchain, wallet)
+
     assert transaction1.nonce == 1
+
     transaction2 = Transaction(sender=wallet.address, recipient=RECIPIENT_ADDRESS, amount=5.0)
     transaction2.set_nonce_hashed(blockchain, wallet)
     transaction2.sign(wallet, TEST_PASSWORD)
     transaction2.add_to_blockchain(blockchain, wallet)
+
     assert all(
         [
             transaction2.nonce == 2,
