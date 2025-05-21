@@ -47,7 +47,7 @@ Wallets come in different flavors, like a digital security toolkit 🛠️:
 - 🌱 Deterministic wallets: One seed, many keys
 - 🎲 Non-deterministic wallets: Random key generation
 
-> For this project, we're building a non-custodial, deterministic wallet - because we like being in the driver's seat! 🎮
+> For this project, we're building a non-custodial, non-deterministic wallet - because we like being in the driver's seat! 🎮
 
 ## 2. Asymmetric Cryptography Fundamentals 🔑
 ### 2.1 Symmetric vs. Asymmetric Cryptography
