@@ -38,10 +38,18 @@ def test_password_verification(wallet):
     assert all(
         [
             wallet._verify_password(TEST_PASSWORD) is True,
-            wallet._verify_password("TEST_ALTERNATE_PASSWORD") is False,
-            wallet._verify_password("") is False,
+            wallet._verify_password("TEST_ALTERATE_PAsSW0RD") is False,
         ]
     )
+
+    with pytest.raises(ValueError):
+        wallet._verify_password("")
+
+    with pytest.raises(ValueError):
+        wallet._verify_password("_Passw0rd_W1TH_SPace ")
+
+    with pytest.raises(ValueError):
+        wallet._verify_password("RepiT111tive_cHars")
 
 
 def test_export_private_key(wallet):

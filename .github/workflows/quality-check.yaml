@@ -1,0 +1,46 @@
+name: Quality Check
+
+on:
+    push:
+        branches: ["main", "dev"]
+    pull_request:
+        branches: ["main", "dev"]
+
+jobs:
+    quality-check:
+        runs-on: ubuntu-latest
+        strategy:
+          fail-fast: true
+        steps:
+            - uses: actions/checkout@v3
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: "3.13"
+                cache: "pip"
+
+            - name: Ensure configuration file exists
+              run: |
+                if [! -f pyproject.toml]; then
+                  echo "Warning: No configuration file found for tools."
+                fi
+
+            - name: Install dependencies
+              run: |
+                python3 -m pip install --upgrade pip
+                pip install uv
+                uv sync --active
+                uv pip install black isort ruff mypy
+            
+            - name: Run Black
+              run: black --check --diff .
+
+            - name: Run isort
+              run: isort --check --diff .
+
+            - name: Run Ruff
+              run: ruff check .
+
+            - name: Run mypy
+              run: mypy .

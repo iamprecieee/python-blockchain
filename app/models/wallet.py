@@ -19,6 +19,7 @@ class Wallet:
     ) -> None:
         """🛡️ Initialize a password-protected wallet with an existing or new private key 🛡️"""
         self._verification_salt = verification_salt if verification_salt else os.urandom(16)
+        self._validate_password_strength(password)
         self._password_hash = self._hash_password(password)
 
         if encrypted_key:
@@ -142,6 +143,7 @@ class Wallet:
         """✅ Verify that the provided password is correct ✅"""
         import hmac
 
+        self._validate_password_strength(password)
         try:
             key = self._derive_kdf_key(self._verification_salt, password)
             return hmac.compare_digest(key, self._password_hash)
@@ -192,6 +194,22 @@ class Wallet:
                 continue
 
         return ec.generate_private_key(ec.SECP256K1())
+
+    def _validate_password_strength(self, password: str) -> None:
+        """📏 Check if password meets minimum security requirements 📏"""
+        has_lowercase = any(char.islower() for char in password)
+        has_uppercase = any(char.isupper() for char in password)
+        has_digit = any(char.isdigit() for char in password)
+        has_special = any(not char.isalnum() for char in password)
+        character_type_count = sum([has_lowercase, has_uppercase, has_digit, has_special])
+        if any([" " in password, len(password) < 8, character_type_count < 3]):
+            raise ValueError("Invalid password detected")
+
+        index = 0
+        while index < len(password) > index + 2:
+            if password[index] == password[index + 1] == password[index + 2]:
+                raise ValueError("Invalid password detected")
+            index += 1
 
     def get_public_key_hex(self) -> str:
         """🔍 Get the public key as a hex string with 0x prefix 🔍"""
