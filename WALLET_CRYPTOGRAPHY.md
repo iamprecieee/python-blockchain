@@ -233,18 +233,39 @@ Generation Requirements:
 
 Example of secure private key generation in Python:
 ```python
-import secrets
-from cryptography.hazmat.primitives.asymmetric import ec
+def _generate_validated_private_key(self) -> ec.EllipticCurvePrivateKey:
+    """Generate a private key with enhanced entropy that passes validation."""
+    import hashlib
+    import time
 
-def generate_private_key():
-    """Generate a cryptographically secure private key for secp256k1."""
-    # Get the curve order
-    curve = ec.SECP256K1()
-    order = curve.order
-    
-    # Generate a random integer between 1 and order-1
-    private_key = secrets.randbelow(order - 1) + 1
-    return private_key
+    max_attempts = 5
+
+    for _attempt in range(max_attempts):
+        entropy_sources = []
+        entropy_sources.append(os.urandom(32))
+        entropy_sources.append(str(time.time_ns()).encode())
+        entropy_sources.append(str(id({})).encode())
+
+        combined_entropy = hashlib.sha3_512(b"".join(entropy_sources)).digest()
+
+        curve = ec.SECP256K1()
+        temp_key = ec.generate_private_key(curve)
+        temp_num = temp_key.private_numbers().private_value
+
+        entropy_int = int.from_bytes(combined_entropy, byteorder="big")
+        valid_key_value = (entropy_int % (temp_num - 1)) + 1
+
+        candidate_key = ec.derive_private_key(valid_key_value, curve)
+
+        private_hex = format(valid_key_value, "x").zfill(64)
+        try:
+            self._validate_private_key_strength(private_hex)
+            return candidate_key
+
+        except ValueError:
+            continue
+
+    return ec.generate_private_key(ec.SECP256K1())
 ```
 Encoding and Storage:
 Private keys can be encoded in several formats:
@@ -297,24 +318,12 @@ Compression Formats:
 Compressed public keys are preferred in blockchain systems for efficiency.
 Example public key derivation:
 ```python
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import serialization
-
-def derive_public_key(private_key_int):
-    """Derive the public key from a private key integer."""
-    private_key = ec.derive_private_key(
-        private_key_int, 
-        ec.SECP256K1()
+def get_public_key_hex(self) -> str:
+    """Get the public key as a hex string with 0x prefix."""
+    public_key_bytes = self.public_key.public_bytes(
+        encoding=Encoding.X962, format=PublicFormat.UncompressedPoint
     )
-    public_key = private_key.public_key()
-    
-    # Get compressed format
-    public_key_bytes = public_key.public_bytes(
-        encoding=serialization.Encoding.X962,
-        format=serialization.PublicFormat.CompressedPoint
-    )
-    
-    return public_key_bytes
+    return "0x" + public_key_bytes.hex()
 ```
 
 > This project's implementation derives public keys from private keys:
@@ -376,28 +385,14 @@ Critical security considerations:
 A more secure variant, deterministic `ECDSA` (`RFC 6979`), derives the nonce from the private key and message, eliminating the risk of nonce reuse.
 Example of `ECDSA` signing:
 ```python
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
-import json
-
-def sign_transaction(transaction_data, private_key_int):
-    """Sign transaction data with the private key."""
-    # Convert transaction data to bytes
-    data_string = json.dumps(transaction_data, sort_keys=True)
-    data_bytes = data_string.encode('utf-8')
-    
-    # Create private key object
-    private_key = ec.derive_private_key(
-        private_key_int,
-        ec.SECP256K1()
-    )
-    
-    # Sign data (uses deterministic nonce generation per RFC 6979)
-    signature = private_key.sign(
-        data_bytes,
-        ec.ECDSA(hashes.SHA256())
-    )
-    
+def sign_transaction(self, transaction_data: dict, password: str) -> bytes:
+    """Sign transaction data with the wallet's private key."""
+    if not self._verify_password(password):
+        raise ValueError("Failed to sign transaction. Invalid wallet password.")
+    data_bytes = orjson.dumps(transaction_data, option=orjson.OPT_SORT_KEYS)
+    message_hash = Wallet._get_keccak_hash(data_bytes)
+    private_key = self._decrypt_private_key(self._encrypted_key)
+    signature = private_key.sign(message_hash, ec.ECDSA(hashes.SHA256()))
     return signature
 ```
 
@@ -428,32 +423,18 @@ The verification process proves that:
 
 Example of signature verification:
 ```python
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.exceptions import InvalidSignature
-import json
-
-def verify_signature(transaction_data, signature, public_key_bytes):
-    """Verify that a signature is valid."""
-    # Convert transaction data to bytes
-    data_string = json.dumps(transaction_data, sort_keys=True)
-    data_bytes = data_string.encode('utf-8')
-    
-    # Load public key
-    public_key = ec.EllipticCurvePublicKey.from_encoded_point(
-        ec.SECP256K1(),
-        public_key_bytes
-    )
-    
-    # Verify signature
+@staticmethod
+def verify_signature(transaction_data: dict, signature: bytes, public_key_bytes: bytes) -> bool:
+    """Verify a transaction's signature."""
     try:
-        public_key.verify(
-            signature,
-            data_bytes,
-            ec.ECDSA(hashes.SHA256())
+        data_bytes = orjson.dumps(transaction_data, option=orjson.OPT_SORT_KEYS)
+        message_hash = Wallet._get_keccak_hash(obj=data_bytes)
+        public_key = ec.EllipticCurvePublicKey.from_encoded_point(
+            ec.SECP256K1(), public_key_bytes
         )
+        public_key.verify(signature, message_hash, ec.ECDSA(hashes.SHA256()))
         return True
-    except InvalidSignature:
+    except Exception:
         return False
 ```
 
@@ -470,7 +451,7 @@ def verify_signature(transaction_data, signature, public_key_bytes):
 >         )
 >         public_key.verify(signature, message_hash, ec.ECDSA(hashes.SHA256()))
 >         return True
->     except Exception as e:
+>     except Exception:
 >         return False
 > ```
 > ...
@@ -530,7 +511,7 @@ class TransactionSignature(BaseModel):
 ### 6.1 Bitcoin-style Addresses
 Creating a Bitcoin address is like crafting a unique digital ID card 🪪:
 
-- 🔄 Hash the public key (SHA-256 + RIPEMD-160)
+- 🔐 Hash the public key (SHA-256 + RIPEMD-160)
 - 🏷️ Add version byte (like a network ID)
 - ✅ Calculate checksum (like a security seal)
 - 🎨 Encode with Base58 (making it human-friendly)
