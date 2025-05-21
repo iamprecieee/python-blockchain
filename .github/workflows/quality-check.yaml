@@ -22,7 +22,7 @@ jobs:
 
             - name: Ensure configuration file exists
               run: |
-                if [! -f pyproject.toml]; then
+                if [ ! -f pyproject.toml ]; then
                   echo "Warning: No configuration file found for tools."
                 fi
 
@@ -32,15 +32,15 @@ jobs:
                 pip install uv
                 uv sync --active
                 uv pip install black isort ruff mypy
-            
+
             - name: Run Black
-              run: black --check --diff .
+              run: uv run black --check --diff .
 
             - name: Run isort
-              run: isort --check --diff .
+              run: uv run isort --check --diff .
 
             - name: Run Ruff
-              run: ruff check .
+              run: uv run ruff check .
 
             - name: Run mypy
-              run: mypy .
+              run: uv run mypy .
